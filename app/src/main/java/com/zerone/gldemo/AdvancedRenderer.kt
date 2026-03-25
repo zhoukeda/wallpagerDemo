@@ -10,6 +10,7 @@ import android.hardware.SensorManager
 import android.opengl.ETC1Util.loadTexture
 import android.opengl.GLES20
 import android.opengl.GLSurfaceView
+import com.zerone.gldemo.sensors.Parallax
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 
@@ -32,8 +33,14 @@ class AdvancedRenderer(
     private var direction = floatArrayOf(0f, 1f)
     private var progress = 0f
     private var time = 0f
+//    private val parallax: Parallax
+//    constructor(context: Context,rasterWallpaperBean:RasterWallpaperBean) : this(context,rasterWallpaperBean) {
+//
+//    }
 
-//    private lateinit var sensorManager: SensorManager
+
+
+
 
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
         program = GLUtil.createProgram(VERTEX, FRAGMENT)
@@ -45,7 +52,7 @@ class AdvancedRenderer(
         uProgress = GLES20.glGetUniformLocation(program, "uProgress")
         uTime = GLES20.glGetUniformLocation(program, "uTime")
 
-//        initSensor()
+
     }
 
     override fun onSurfaceChanged(gl: GL10?, w: Int, h: Int) {
@@ -82,28 +89,6 @@ class AdvancedRenderer(
         direction[1] = y
     }
 
-    // ---------- 重力控制 ----------
-//    private fun initSensor() {
-//        sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
-//        val sensor = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
-//        sensorManager.registerListener(this, sensor, SensorManager.SENSOR_DELAY_GAME)
-//    }
-
-//    override fun onSensorChanged(event: SensorEvent) {
-//        val x = event.values[0]
-//        val y = event.values[1]
-//
-//        direction[0] = -x / 9.8f
-//        direction[1] = y / 9.8f
-//    }
-
-//    override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
-
-    // ---------- 简单模糊 ----------
-    private fun createBlurBitmap(src: Bitmap): Bitmap {
-        val small = Bitmap.createScaledBitmap(src, src.width / 8, src.height / 8, true)
-        return Bitmap.createScaledBitmap(small, src.width, src.height, true)
-    }
 
     companion object {
         const val VERTEX = """
