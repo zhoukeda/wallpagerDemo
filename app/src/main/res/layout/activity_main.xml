@@ -1,90 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:orientation="vertical">
 
-    <!-- OpenGL 渲染层 -->
-    <android.opengl.GLSurfaceView
-        android:id="@+id/glView"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent" />
-
-    <!-- 底部控制区 -->
-    <LinearLayout
+    <Button
+        android:id="@+id/btnWangge"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_gravity="bottom"
-        android:orientation="horizontal"
-        android:gravity="center"
-        android:padding="16dp">
+        android:text="网格扭曲"
+        android:layout_marginHorizontal="12dp"/>
 
-        <Button
-            android:id="@+id/btn_left"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="左上" />
-
-        <Button
-            android:id="@+id/btn_top"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="正上"
-            android:layout_marginStart="12dp"/>
-
-        <Button
-            android:id="@+id/btn_right"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="右上"
-            android:layout_marginStart="12dp"/>
-
-        <Button
-            android:id="@+id/btnReset"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="重置"
-            android:layout_marginStart="12dp"/>
-
-
-    </LinearLayout>
-
-    <LinearLayout
+    <Button
+        android:id="@+id/btnGuangShan"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_gravity="bottom"
-        android:orientation="horizontal"
-        android:layout_marginBottom="50dp"
-        android:gravity="center"
-        android:padding="16dp">
+        android:text="光栅效果"
+        android:layout_marginHorizontal="12dp"/>
 
-        <Button
-            android:id="@+id/btn20"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="20" />
-
-        <Button
-            android:id="@+id/btn40"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="40"
-            android:layout_marginStart="12dp"/>
-
-        <Button
-            android:id="@+id/btn60"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="60"
-            android:layout_marginStart="12dp"/>
-
-        <Button
-            android:id="@+id/btn80"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="80"
-            android:layout_marginStart="12dp"/>
-
-
-    </LinearLayout>
-
-</FrameLayout>
+</LinearLayout>

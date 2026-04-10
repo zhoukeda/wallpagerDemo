@@ -1,16 +1,10 @@
-package com.zerone.gldemo
+package com.zerone.gldemo.renderer
 
 import android.content.Context
-import android.content.UriRelativeFilter.FRAGMENT
 import android.graphics.Bitmap
-import android.hardware.Sensor
-import android.hardware.SensorEvent
-import android.hardware.SensorEventListener
-import android.hardware.SensorManager
-import android.opengl.ETC1Util.loadTexture
 import android.opengl.GLES20
 import android.opengl.GLSurfaceView
-import com.zerone.gldemo.sensors.Parallax
+import com.zerone.gldemo.GLUtil
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 

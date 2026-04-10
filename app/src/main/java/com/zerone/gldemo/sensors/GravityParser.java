@@ -4,7 +4,7 @@ import android.content.Context;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 
-import static com.zerone.hidesktop.utils.sensors.Parallax.VERTICAL_FIX;
+import static com.zerone.gldemo.sensors.Parallax.VERTICAL_FIX;
 import static java.lang.Math.atan2;
 import static java.lang.Math.sqrt;
 import static java.lang.Math.toDegrees;

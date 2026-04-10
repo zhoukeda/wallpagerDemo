@@ -7,3 +7,5 @@ data class RasterWallpaperBean(
     var left: String? = "",
     var right: String? = "",
 )
+
+data class Vertex(var x: Float, var y: Float)

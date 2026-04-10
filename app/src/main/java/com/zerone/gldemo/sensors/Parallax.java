@@ -5,7 +5,7 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
-import android.util.Log;import com.zerone.hidesktop.utils.sensors.RotationParser;
+import android.util.Log;
 
 public class Parallax implements SensorEventListener {
     public final static double VERTICAL_FIX = 0.01;
