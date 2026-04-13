@@ -1,5 +1,7 @@
 package com.zerone.gldemo.renderer
 
+import android.R.attr.x
+import android.R.attr.y
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -48,6 +50,7 @@ void main() {
     private var bgTex = 0
     private var smallTex = 0
     private var stretchTex = 0 // ✅ 新增：极限拉伸时的前景图片
+
     // ✅ 添加：uniform 位置
     private var uTexLoc = 0
     private var currentTex = 0 // ✅ 新增：当前正在使用的纹理
@@ -68,7 +71,7 @@ void main() {
     private var ty = 0f
 
     private val radius = 0.4f       // 影响半径
-    private val strength = 0.6f     // 拖拽力度 (0~1)
+    private val strength = 0.4f     // 拖拽力度 (0~1)
 
     // 记录上一帧的触摸位置 (OpenGL 坐标系)
     private var lastTx = 0f
@@ -77,7 +80,15 @@ void main() {
     // 在类成员变量中添加背景专用的 Buffer，避免每帧创建
     private var bgVertexBuffer: FloatBuffer? = null
     private var bgUVBuffer: FloatBuffer? = null
-    private var maxStretchThreshold = 0.02f
+
+    private var touchStartX = 0.35f
+    private var touchEndX = 0.65f
+    private var touchStartY = 0.35f
+    private var touchEndY = 0.65f
+    private val thresholdDistance = 0.05f
+
+    private var startX = 0f
+    private var startY = 0f
 
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
 
@@ -89,12 +100,14 @@ void main() {
         val bg = BitmapFactory.decodeResource(content.resources, R.drawable.bg)
         val small = BitmapFactory.decodeResource(content.resources, R.drawable.small_image)
         // ✅ 新增：加载极限状态的图片
-        val stretch = BitmapFactory.decodeResource(content.resources, R.drawable.small_image_stretch)
+        val stretch =
+            BitmapFactory.decodeResource(content.resources, R.drawable.small_image_stretch)
 
         val matrix = android.graphics.Matrix()
         matrix.preScale(1f, -1f)
         val fgsmall = Bitmap.createBitmap(small, 0, 0, small.width, small.height, matrix, false)
-        val fgStretch = Bitmap.createBitmap(stretch, 0, 0, stretch.width, stretch.height, matrix, false) //
+        val fgStretch =
+            Bitmap.createBitmap(stretch, 0, 0, stretch.width, stretch.height, matrix, false) //
 
 
         GLES20.glUseProgram(program)
@@ -120,7 +133,7 @@ void main() {
         drawMesh()
     }
 
-    private fun drawMesh(){
+    private fun drawMesh() {
         GLES20.glEnable(GLES20.GL_BLEND)
         GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA)
 
@@ -233,8 +246,6 @@ void main() {
         val dy = ty - lastTy
 
         // ✅ 1. 提前定义变量，用于记录最大拉伸量
-        var maxStretchAmount = 0f
-
         if (touching) {
             // ✅ 2. 核心优化：只遍历一次 (for 循环 A)
             for (i in verts.indices step 2) {
@@ -251,28 +262,10 @@ void main() {
                     verts[i] += dx * weight
                     verts[i + 1] += dy * weight
                 }
-
-                // --- B. 计算变形幅度 (逻辑判断) ---
-                // 注意：这里计算的是“旧位置”到“原始位置”的距离
-                // 因为我们想判断的是“这次移动前，它已经被拉多远了”
-                // 如果你想判断移动后的状态，可以把这行放在 if 语句上面
-                val stretchDx = verts[i] - base[i]
-                val stretchDy = verts[i+1] - base[i+1]
-                val stretchAmount = sqrt(stretchDx * stretchDx + stretchDy * stretchDy)
-
-                if (stretchAmount > maxStretchThreshold) {
-                    maxStretchAmount = stretchAmount
-                }
             }
 
             // ✅ 3. 根据刚才遍历的结果，决定用哪张图
             // 注意：这里不要在这里赋值给 OpenGL，只记录状态
-            LogUtils.i("maxStretchAmount----->${maxStretchAmount}")
-            currentTex = if (maxStretchAmount > maxStretchThreshold) {
-                stretchTex
-            } else {
-                smallTex
-            }
 
             lastTx = tx
             lastTy = ty
@@ -295,6 +288,7 @@ void main() {
             GLES20.glCompileShader(s)
             return s
         }
+
         val vs = load(GLES20.GL_VERTEX_SHADER, vertexShaderCode)
         val fs = load(GLES20.GL_FRAGMENT_SHADER, fragmentShaderCode)
 
@@ -304,26 +298,37 @@ void main() {
             GLES20.glLinkProgram(it)
         }
     }
+
     fun hit(x: Float, y: Float): Boolean {
-        return x in 0.35f..0.65f && y in 0.35f..0.65f
+        return x in touchStartX..touchEndX && y in touchStartY..touchEndY
     }
 
-    fun touch(x: Float, y: Float, down: Boolean) {
+
+    fun touch(startX:Float,startY:Float,x: Float, y: Float, down: Boolean) {
+        this.startX = startX
+        this.startY = startY
+        val dragDistance = sqrt((x-startX)*(x-startX) + (y-startY)*(y-startY))
+
+        currentTex = if (dragDistance > thresholdDistance){
+            stretchTex
+        }else{
+            smallTex
+        }
+
+        Log.d("dragDistance", "滑动距离t: $dragDistance")
+
         val newTx = x * 2f - 1f
         val newTy = (1f - y) * 2f - 1f
-
         if (down) {
             if (!touching) {
                 lastTx = newTx
                 lastTy = newTy
-                Log.d("Mesh", "Finger Down at: $newTx, $newTy")
             }
             tx = newTx
             ty = newTy
             touching = true
         } else {
             // ✅ 手指松开：直接重置网格！
-            Log.d("Mesh", "Finger Up: Resetting Mesh")
             resetMeshToBase() // 调用重置函数
             touching = false
             // 注意：这里不要更新 lastTx，或者让它失效
@@ -362,13 +367,19 @@ void main() {
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textures[0])
         GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR)
         GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR)
-        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE)
-        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE)
+        GLES20.glTexParameteri(
+            GLES20.GL_TEXTURE_2D,
+            GLES20.GL_TEXTURE_WRAP_S,
+            GLES20.GL_CLAMP_TO_EDGE
+        )
+        GLES20.glTexParameteri(
+            GLES20.GL_TEXTURE_2D,
+            GLES20.GL_TEXTURE_WRAP_T,
+            GLES20.GL_CLAMP_TO_EDGE
+        )
         GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bitmap, 0)
         return textures[0]
     }
-
-
 
 
     private fun initBackgroundBuffers() {
@@ -376,8 +387,8 @@ void main() {
         val vertices = floatArrayOf(
             -1f, -1f, // 左下
             1f, -1f, // 右下
-            -1f,  1f, // 左上
-            1f,  1f  // 右上
+            -1f, 1f, // 左上
+            1f, 1f  // 右上
         )
 
         // 定义对应的 UV 坐标 (0~1)

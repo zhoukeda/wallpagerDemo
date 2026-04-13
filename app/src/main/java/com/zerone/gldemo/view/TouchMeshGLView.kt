@@ -1,5 +1,6 @@
 package com.zerone.gldemo.view
 
+import android.R.attr.startX
 import android.content.Context
 import android.graphics.Bitmap
 import android.opengl.GLES20
@@ -21,7 +22,9 @@ import javax.microedition.khronos.opengles.GL10
 class TouchMeshGLView(context: Context) : GLSurfaceView(context) {
 
     private val renderer = MeshRenderer(context)
-
+    private var startX = 0f
+    private var startY = 0f
+    private var isHit = false
     init {
         setEGLContextClientVersion(2)
         setRenderer(renderer)
@@ -35,18 +38,20 @@ class TouchMeshGLView(context: Context) : GLSurfaceView(context) {
         val y = e.y / height
 
         when (e.action) {
-
-            MotionEvent.ACTION_DOWN,
+            MotionEvent.ACTION_DOWN ->{
+                startX = x
+                startY = y
+                isHit = renderer.hit(startX, startY)
+            }
             MotionEvent.ACTION_MOVE -> {
-
-                if (renderer.hit(x, y)) {
-                    renderer.touch(x, y, true)
+                if (isHit) {
+                    renderer.touch(startX,startY,x, y, true)
                     requestRender()
                 }
             }
 
             MotionEvent.ACTION_UP -> {
-                renderer.touch(0f, 0f, false)
+                renderer.touch(0f, 0f,0f,0f, false)
                 requestRender()
             }
         }
