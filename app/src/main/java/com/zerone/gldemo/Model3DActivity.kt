@@ -102,7 +102,7 @@ class Model3DActivity : AppCompatActivity() {
 
         // 加载模型
         lifecycleScope.launch {
-            val file = copyAssetToCache(this@Model3DActivity, "DamagedHelmet.glb")
+            val file = copyAssetToCache(this@Model3DActivity, "安卓2.glb")
             val loader = ModelLoader(sceneView.engine, this@Model3DActivity)
             val modelInstance = loader.createModelInstance(file)
             val node = ModelNode(modelInstance).apply {
