@@ -25,6 +25,11 @@ class MainActivity : AppCompatActivity() {
                 startActivity(Intent(this, AdvancedActivity::class.java))
         }
 
+        findViewById<Button>(R.id.btnModel).setOnClickListener {
+            startActivity(Intent(this, Model3DActivity::class.java))
+
+        }
+
 
     }
 

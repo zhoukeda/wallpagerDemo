@@ -23,12 +23,13 @@
         </activity>
 
         <activity
-            android:name=".MeshActivity">
-        </activity>
+            android:name=".MeshActivity"/>
 
         <activity
-            android:name=".AdvancedActivity">
-        </activity>
+            android:name=".AdvancedActivity"/>
+
+        <activity
+            android:name=".Model3DActivity"/>
     </application>
 
 </manifest>

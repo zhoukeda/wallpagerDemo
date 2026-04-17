@@ -42,4 +42,5 @@ dependencies {
     androidTestImplementation(libs.androidx.espresso.core)
 
     api(libs.utilcodex)
+    api(libs.sceneview)
 }
