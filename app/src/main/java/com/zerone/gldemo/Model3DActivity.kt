@@ -8,7 +8,10 @@ import android.widget.FrameLayout
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.google.android.filament.LightManager
+import com.google.android.filament.utils.Manipulator
 import io.github.sceneview.SceneView
+import io.github.sceneview.gesture.CameraGestureDetector
+import io.github.sceneview.gesture.CameraGestureDetector.CameraManipulator
 import io.github.sceneview.gesture.transform
 import io.github.sceneview.loaders.ModelLoader
 import io.github.sceneview.math.Position
@@ -33,14 +36,11 @@ class Model3DActivity : AppCompatActivity() {
         setContentView(R.layout.activity_model)
 
         sceneView = SceneView(this, isOpaque = false)
-
         val contentlay = findViewById<FrameLayout>(R.id.lcontnet)
         contentlay.addView(sceneView)
-
         // 设置相机初始位置
         sceneView.cameraNode.position = Position(0f, 0f, 3f)
         sceneView.cameraNode.lookAt(Position(0f, 0f, 0f))
-
         // 创建初始 Manipulator
         sceneView.cameraManipulator = createManipulator(0f, 0f, 3f)
 
@@ -75,22 +75,6 @@ class Model3DActivity : AppCompatActivity() {
             }
         }
 
-//        sceneView.setOnGestureListener(
-//            onScale = { detector, e, node ->
-//                val manipulator = sceneView.cameraManipulator ?: return
-//                val current = manipulator.transform
-//                val pos = current.translation
-//                val dist = pos.length()
-//                val next = dist * detector.scaleFactor
-//                val clamped = next.coerceIn(minDistance, maxDistance)
-//                val ratio = clamped / dist
-//                val newPos = pos * ratio
-//                manipulator.transform = manipulator.transform.copy(
-//                    translation = newPos
-//                )
-//            }
-//        )
-
         // 添加灯光
         val light = LightNode(
             engine = sceneView.engine,
@@ -102,7 +86,7 @@ class Model3DActivity : AppCompatActivity() {
 
         // 加载模型
         lifecycleScope.launch {
-            val file = copyAssetToCache(this@Model3DActivity, "安卓2.glb")
+            val file = copyAssetToCache(this@Model3DActivity, "五角星低面数安卓.glb")
             val loader = ModelLoader(sceneView.engine, this@Model3DActivity)
             val modelInstance = loader.createModelInstance(file)
             val node = ModelNode(modelInstance).apply {
@@ -115,14 +99,16 @@ class Model3DActivity : AppCompatActivity() {
         }
     }
 
-    private fun createManipulator(x: Float, y: Float, z: Float): com.google.android.filament.utils.Manipulator {
-        return com.google.android.filament.utils.Manipulator.Builder()
+    private fun createManipulator(x: Float, y: Float, z: Float): CameraManipulator {
+        val newManipulator =  Manipulator.Builder()
             .orbitHomePosition(x, y, z)
             .targetPosition(0f, 0f, 0f)
             .orbitSpeed(0.005f, 0.005f)
             .zoomSpeed(0.05f)
             .viewport(sceneView.width, sceneView.height)
-            .build(com.google.android.filament.utils.Manipulator.Mode.ORBIT)
+            .build(Manipulator.Mode.ORBIT)
+
+       return CameraGestureDetector.DefaultCameraManipulator(newManipulator)
     }
 
     /**
@@ -132,15 +118,15 @@ class Model3DActivity : AppCompatActivity() {
         val currentPos = sceneView.cameraNode.position
 
         // 重新创建 Manipulator，使用当前相机的实际位置
-        val newManipulator = com.google.android.filament.utils.Manipulator.Builder()
+        val newManipulator = Manipulator.Builder()
             .orbitHomePosition(currentPos.x, currentPos.y, currentPos.z)
             .targetPosition(0f, 0f, 0f)
             .orbitSpeed(0.005f, 0.005f)
             .zoomSpeed(0.05f)
             .viewport(sceneView.width, sceneView.height)
-            .build(com.google.android.filament.utils.Manipulator.Mode.ORBIT)
+            .build(Manipulator.Mode.ORBIT)
 
-        sceneView.cameraManipulator = newManipulator
+        sceneView.cameraManipulator = CameraGestureDetector.DefaultCameraManipulator(newManipulator)
 
         Log.d("Model3D", "同步相机位置: (${currentPos.x}, ${currentPos.y}, ${currentPos.z})")
     }

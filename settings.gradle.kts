@@ -32,4 +32,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "gldemo"
 include(":app")
- 
+include(":scenceView")
