@@ -1,18 +1,27 @@
 package com.zerone.gldemo
 
+import android.R.attr.bitmap
+import android.R.attr.y
+import android.annotation.SuppressLint
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.os.Bundle
+import android.os.Looper
 import android.util.Log
+import android.view.GestureDetector
 import android.view.MotionEvent
+import android.view.ScaleGestureDetector
 import android.widget.FrameLayout
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
+import com.google.android.filament.Engine
 import com.google.android.filament.LightManager
-import com.google.android.filament.utils.Manipulator
+import com.google.android.filament.Texture
+import com.google.android.filament.Texture.PixelBufferDescriptor
+import com.google.android.filament.TextureSampler
+import com.google.android.filament.utils.TextureType
 import io.github.sceneview.SceneView
-import io.github.sceneview.gesture.CameraGestureDetector
-import io.github.sceneview.gesture.CameraGestureDetector.CameraManipulator
-import io.github.sceneview.gesture.transform
 import io.github.sceneview.loaders.ModelLoader
 import io.github.sceneview.math.Position
 import io.github.sceneview.math.Scale
@@ -20,6 +29,13 @@ import io.github.sceneview.node.LightNode
 import io.github.sceneview.node.ModelNode
 import kotlinx.coroutines.launch
 import java.io.File
+import io.github.sceneview.math.Transform
+import io.github.sceneview.math.Rotation // 注意导入这个
+import io.github.sceneview.texture.ImageTexture
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
+import kotlin.math.cos
+import kotlin.math.sin
 
 /**
  * @author dada
@@ -29,8 +45,18 @@ import java.io.File
 class Model3DActivity : AppCompatActivity() {
     private lateinit var sceneView: SceneView
     private var autoRotate = true
+    private var yaw = 0f
+    private var pitch = 0f
+    private var scale = 0.3f
+    private val minScale = 0.2f
+    private var maxScale = 1f
+    private var modelNode: ModelNode? = null
+    private lateinit var gestureDetector: GestureDetector
+    private lateinit var scaleDetector: ScaleGestureDetector
     private var angle = 0f
-    private var isManipulatorSynced = false  // ✅ 标记是否已同步过
+
+
+    @SuppressLint("ClickableViewAccessibility")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_model)
@@ -42,36 +68,51 @@ class Model3DActivity : AppCompatActivity() {
         sceneView.cameraNode.position = Position(0f, 0f, 3f)
         sceneView.cameraNode.lookAt(Position(0f, 0f, 0f))
         // 创建初始 Manipulator
-        sceneView.cameraManipulator = createManipulator(0f, 0f, 3f)
+        sceneView.cameraManipulator = null
 
-
-        // ✅ 关键：触摸时停止自动旋转，并同步 Manipulator 到当前相机位置
-        sceneView.setOnTouchListener { _, event ->
-            when (event.actionMasked) {
-                MotionEvent.ACTION_DOWN -> {
-                    // 1. 停止自动旋转
-                    autoRotate = false
-
-                    // 2. 只在第一次触摸时同步（避免重复重建导致的手势中断）
-                    if (!isManipulatorSynced) {
-                        syncManipulatorToCurrentCamera()
-                        isManipulatorSynced = true
-                    }
+        gestureDetector = GestureDetector(this,
+            object : GestureDetector.SimpleOnGestureListener() {
+                override fun onScroll(
+                    e1: MotionEvent?,
+                    e2: MotionEvent,
+                    dx: Float,
+                    dy: Float
+                ): Boolean {
+                    if (scaleDetector.isInProgress) return true
+                    yaw -= dx * 0.5f
+                    pitch -= dy * 0.5f
+                    updateModelTransform()
+                    return true
                 }
             }
-            // 返回 false 让 CameraGestureDetector 继续处理手势
-            false
+        )
+
+
+        scaleDetector = ScaleGestureDetector(this,
+            object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+                override fun onScale(detector: ScaleGestureDetector): Boolean {
+                    val factor = detector.scaleFactor
+                    scale *= factor
+                    scale = scale.coerceIn(minScale, maxScale)
+                    updateModelTransform()
+                    return true
+                }
+            }
+        )
+
+
+        sceneView.setOnTouchListener { _, event ->
+            autoRotate = false
+            scaleDetector.onTouchEvent(event)
+            gestureDetector.onTouchEvent(event)
+            true
         }
 
         // 自动旋转
         sceneView.onFrame = onFrame@{ frameTimeNanos ->
             if (autoRotate) {
-                angle += 0.5f
-                val radius = 3f
-                val x = kotlin.math.sin(angle * 0.01f) * radius
-                val z = kotlin.math.cos(angle * 0.01f) * radius
-                sceneView.cameraNode.position = Position(x, 0f, z)
-                sceneView.cameraNode.lookAt(Position(0f, 0f, 0f))
+                yaw += 0.3f
+                updateModelTransform()
             }
         }
 
@@ -83,54 +124,87 @@ class Model3DActivity : AppCompatActivity() {
             intensity(100_000f)
         }
         sceneView.addChildNode(light)
-
         // 加载模型
         lifecycleScope.launch {
-            val file = copyAssetToCache(this@Model3DActivity, "五角星低面数安卓.glb")
+            val file = copyAssetToCache(this@Model3DActivity, "DamagedHelmet.glb")
             val loader = ModelLoader(sceneView.engine, this@Model3DActivity)
-            val modelInstance = loader.createModelInstance(file)
-            val node = ModelNode(modelInstance).apply {
+            val filamentInstance = loader.createModelInstance(file)
+            modelNode = ModelNode(filamentInstance).apply {
                 position = Position(0f, 0f, 0f)
-                scale = Scale(0.3f)
+                scale = Scale(1f)
             }
-            sceneView.addChildNode(node)
+
+            modelNode?.let {
+                sceneView.addChildNode(it)
+                sceneView.post {
+
+                    val bitmap = loadBitmapFromAssets(
+                        sceneView.context,
+                        "widget_dianzibaji_demo.png"
+                    )
+
+                    val texture = Texture.Builder()
+                        .width(bitmap.width)
+                        .height(bitmap.height)
+                        .sampler(Texture.Sampler.SAMPLER_2D)
+                        .format(Texture.InternalFormat.SRGB8_A8)
+                        .build(sceneView.engine)
+
+                    val buffer = ByteBuffer.allocateDirect(bitmap.byteCount)
+                    buffer.order(ByteOrder.nativeOrder())
+                    bitmap.copyPixelsToBuffer(buffer)
+                    buffer.rewind()
+
+                    val pbd = PixelBufferDescriptor(
+                        buffer,
+                        Texture.Format.RGBA,
+                        Texture.Type.UBYTE,
+                        1,
+                        0,
+                        0,
+                        bitmap.width,
+                        null,
+                        null
+                    )
+
+                    texture.setImage(sceneView.engine, 0, pbd)
+
+                    filamentInstance.materialInstances.forEach { material ->
+                        Log.d("Model3D", "material = ${material.name}")
+                        material.setParameter(
+                            "baseColorMap",
+                            texture,
+                            TextureSampler()
+                        )
+                    }
+                }
+
+            }
 
             Log.d("Model3D", "模型加载成功")
         }
+
+
     }
 
-    private fun createManipulator(x: Float, y: Float, z: Float): CameraManipulator {
-        val newManipulator =  Manipulator.Builder()
-            .orbitHomePosition(x, y, z)
-            .targetPosition(0f, 0f, 0f)
-            .orbitSpeed(0.005f, 0.005f)
-            .zoomSpeed(0.05f)
-            .viewport(sceneView.width, sceneView.height)
-            .build(Manipulator.Mode.ORBIT)
 
-       return CameraGestureDetector.DefaultCameraManipulator(newManipulator)
+
+    private fun updateModelTransform() {
+        val node = modelNode ?: return
+        // 1. 创建 Rotation 对象 (欧拉角)
+        val rotation = Rotation(pitch, yaw, 0f)
+        // 2. 使用库提供的 Transform 构造函数
+        // 源码分析：fun Transform(position, rotation, scale) 内部会自动调用 rotation.toQuaternion()
+        node.transform = Transform(
+            position = Position(0f, 0f, 0f),
+            rotation = rotation,
+            scale = Scale(scale)
+        )
     }
 
     /**
      * ✅ 将 Manipulator 同步到当前相机位置（通过重建）
      */
-    private fun syncManipulatorToCurrentCamera() {
-        val currentPos = sceneView.cameraNode.position
-
-        // 重新创建 Manipulator，使用当前相机的实际位置
-        val newManipulator = Manipulator.Builder()
-            .orbitHomePosition(currentPos.x, currentPos.y, currentPos.z)
-            .targetPosition(0f, 0f, 0f)
-            .orbitSpeed(0.005f, 0.005f)
-            .zoomSpeed(0.05f)
-            .viewport(sceneView.width, sceneView.height)
-            .build(Manipulator.Mode.ORBIT)
-
-        sceneView.cameraManipulator = CameraGestureDetector.DefaultCameraManipulator(newManipulator)
-
-        Log.d("Model3D", "同步相机位置: (${currentPos.x}, ${currentPos.y}, ${currentPos.z})")
-    }
-
     fun copyAssetToCache(context: Context, name: String): File {
         val file = File(context.cacheDir, name)
         if (!file.exists()) {
@@ -143,9 +217,10 @@ class Model3DActivity : AppCompatActivity() {
         return file
     }
 
-    fun getDistance(): Float {
-        val p = sceneView.cameraNode.position
-        return kotlin.math.sqrt(p.x*p.x + p.y*p.y + p.z*p.z)
+    fun loadBitmapFromAssets(context: Context, fileName: String): Bitmap {
+        context.assets.open(fileName).use { input ->
+            return BitmapFactory.decodeStream(input)
+                ?: throw IllegalArgumentException("Bitmap decode failed: $fileName")
+        }
     }
-
 }

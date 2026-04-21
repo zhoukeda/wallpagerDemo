@@ -150,9 +150,7 @@ open class CameraGestureDetector(
         val touch = TouchPair(event, viewHeight())
         when (event.actionMasked) {
             MotionEvent.ACTION_MOVE -> {
-
                 // CANCEL GESTURE DUE TO UNEXPECTED POINTER COUNT
-
                 if ((event.pointerCount != 1 && currentGesture == Gesture.ORBIT) ||
                     (event.pointerCount != 2 && currentGesture == Gesture.PAN) ||
                     (event.pointerCount != 2 && currentGesture == Gesture.ZOOM)

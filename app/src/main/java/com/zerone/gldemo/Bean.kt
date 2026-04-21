@@ -1,11 +1,10 @@
 package com.zerone.gldemo
 
-data class RasterWallpaperBean(
-    var wallpaper: String? = "",
-    var top: String? = "",
-    var bottom: String? = "",
-    var left: String? = "",
-    var right: String? = "",
-)
+import io.github.sceneview.math.Position
 
-data class Vertex(var x: Float, var y: Float)
+data class CameraState(
+    var yaw: Float = 0f,
+    var pitch: Float = 0f,
+    var distance: Float = 3f,
+    var target: Position = Position(0f, 0f, 0f),
+)

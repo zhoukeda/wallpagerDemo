@@ -18,8 +18,7 @@ class ImageTexture {
 
         init {
             sampler(Texture.Sampler.SAMPLER_2D)
-            // This tells Filament to figure out the number of mip levels
-            levels(0xff)
+            usage(Texture.Usage.SAMPLEABLE or Texture.Usage.GEN_MIPMAPPABLE)
         }
 
         fun type(type: TextureType) = apply {
@@ -111,11 +110,6 @@ fun Texture.setBitmap(
     @IntRange(from = 0) level: Int = 0
 ) = setBitmap(engine, ImageTexture.getBitmap(context, drawableResId, type), level)
 
-fun Texture.setBitmap(engine: Engine, bitmap: Bitmap, @IntRange(from = 0) level: Int = 0) =
-    TextureHelper.setBitmap(
-        engine,
-        this,
-        // This tells Filament to figure out the number of mip levels
-        level,
-        bitmap
-    )
+fun Texture.setBitmap(engine: Engine, bitmap: Bitmap, @IntRange(from = 0) level: Int = 1) =
+
+    TextureHelper.setBitmap(engine, this, level, bitmap)
