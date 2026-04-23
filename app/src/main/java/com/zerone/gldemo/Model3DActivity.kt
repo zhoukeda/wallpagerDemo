@@ -51,9 +51,9 @@ class Model3DActivity : AppCompatActivity() {
     private var autoRotate = true
     private var yaw = 0f
     private var pitch = 0f
-    private var scale = 1f
+    private var scale = 1.3f
     private val minScale = 0.2f
-    private var maxScale = 1f
+    private var maxScale = 1.8f
 
     //模型相关
     private var modelNode: ModelNode? = null
@@ -156,8 +156,8 @@ class Model3DActivity : AppCompatActivity() {
                     flingVelocityY = 0f
 
                     // --- 核心修改：计算增量并累积 ---
-                    val deltaYaw = -dx * 0.5f // 灵敏度系数
-                    val deltaPitch = -dy * 0.5f
+                    val deltaYaw = -dx * 0.2f // 灵敏度系数
+                    val deltaPitch = -dy * 0.2f
 
                     // 可选：限制垂直角度，防止翻转过头 (如果需要无限垂直翻转，删掉这段限制)
                     pitchAccumulator += deltaPitch
@@ -233,7 +233,7 @@ class Model3DActivity : AppCompatActivity() {
         sceneView.onFrame = onFrame@{ frameTimeNanos ->
             if (isDestroyed) return@onFrame
             if (autoRotate) {
-                val qAuto = Quaternion.fromAxisAngle(Float3(0f, 1f, 0f), 0.5f) // 0.5 是自动旋转速度
+                val qAuto = Quaternion.fromAxisAngle(Float3(0f, 1f, 0f), 0.2f) // 0.5 是自动旋转速度
                 currentRotation = qAuto * currentRotation
             }else{
                 if (Math.abs(flingVelocityX) > FLING_THRESHOLD || Math.abs(flingVelocityY) > FLING_THRESHOLD) {
@@ -254,8 +254,8 @@ class Model3DActivity : AppCompatActivity() {
                         lastSensorYaw = 0f
                         isStartParallx = false
                     }else{
-                        val currentSensorPitch = parallax?.degY?.toFloat().safe() - parallax?.baseDegY?.toFloat().safe()
-                        val currentSensorYaw = parallax?.degX?.toFloat().safe() - parallax?.baseDegX?.toFloat().safe()
+                        val currentSensorPitch = (parallax?.degY?.toFloat().safe() - parallax?.baseDegY?.toFloat().safe())*0.7f
+                        val currentSensorYaw = -(parallax?.degX?.toFloat().safe() - parallax?.baseDegX?.toFloat().safe())*0.7f
                         LogUtils.e("重力感应---->currentSensorPitch = ${currentSensorPitch}---->currentSensorYaw = ${currentSensorYaw}")
                         // 2. 计算增量 = 当前角度 - 上一帧角度
                         val deltaPitch = currentSensorPitch - lastSensorPitch
@@ -421,6 +421,7 @@ class Model3DActivity : AppCompatActivity() {
 
     private fun stopParallax(){
         if (isParallxRuning){
+            isParallxRuning = false
             LogUtils.e("Model3D", "关闭传感器")
             parallax?.stop()
         }

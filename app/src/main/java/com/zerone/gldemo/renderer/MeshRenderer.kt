@@ -1,7 +1,5 @@
 package com.zerone.gldemo.renderer
 
-import android.R.attr.x
-import android.R.attr.y
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -9,7 +7,6 @@ import android.opengl.GLES20
 import android.opengl.GLSurfaceView
 import android.opengl.GLUtils
 import android.util.Log
-import com.blankj.utilcode.util.LogUtils
 import com.zerone.gldemo.R
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -87,8 +84,20 @@ void main() {
     private var touchEndY = 0.65f
     private val thresholdDistance = 0.05f
 
-    private var startX = 0f
-    private var startY = 0f
+    private var startTx = 0f
+    private var startTy = 0f
+
+    // --- 物理回弹相关变量 ---
+    private var isRebounding = false       // 是否正在回弹
+    private var reboundStartTime = 0L      // 回弹开始的时间戳
+    private val reboundDuration = 1000L    // 回弹总时长 (1秒 = 1000毫秒)
+
+    private var reboundVx = 0f             // X轴速度
+    private var reboundVy = 0f             // Y轴速度
+
+    // 记录按下时的坐标 (需要在触摸事件 down 时赋值)
+    private var downX = 0f
+    private var downY = 0f
 
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
 
@@ -177,22 +186,22 @@ void main() {
 
     private fun initMesh() {
         currentTex = smallTex
-
         val step = 1f / N
         val v = mutableListOf<Float>()
         val uvList = mutableListOf<Float>()
         val id = mutableListOf<Short>()
         // ✅ 图片大小和位置
-        val imageSize = 0.3f
-        val scale = imageSize
-        val offset = (1f - scale) / 2f
+        val scaleX = 0.48f
+        val scaleY = 0.2216f
+        val offsetX = (1f - scaleX) / 2f
+        val offsetY = (1f - scaleY) / 2f
         for (y in 0..N) {
             for (x in 0..N) {
                 val nx = x * step
                 val ny = y * step
                 // 👉 居中缩放关键
-                val px = offset + nx * scale
-                val py = offset + ny * scale
+                val px = offsetX + nx * scaleX
+                val py = offsetY + ny * scaleY
                 // 转 NDC [-1, 1]
                 v.add(px * 2f - 1f)
                 v.add(py * 2f - 1f)
@@ -244,19 +253,16 @@ void main() {
     private fun updateMesh() {
         val dx = tx - lastTx
         val dy = ty - lastTy
-
         // ✅ 1. 提前定义变量，用于记录最大拉伸量
         if (touching) {
             // ✅ 2. 核心优化：只遍历一次 (for 循环 A)
             for (i in verts.indices step 2) {
                 val vx = verts[i]
                 val vy = verts[i + 1]
-
                 // --- A. 计算拉伸权重 (物理模拟) ---
                 val distDx = vx - tx
                 val distDy = vy - ty
                 val dist = sqrt(distDx * distDx + distDy * distDy)
-
                 if (dist < radius) {
                     val weight = (1f - dist / radius) * strength
                     verts[i] += dx * weight
@@ -266,16 +272,11 @@ void main() {
 
             // ✅ 3. 根据刚才遍历的结果，决定用哪张图
             // 注意：这里不要在这里赋值给 OpenGL，只记录状态
-
             lastTx = tx
             lastTy = ty
-        } else {
-            // 手指松开，恢复默认图
-            currentTex = smallTex
-        }
 
-        // ✅ 4. 关键：只更新一次 Buffer
-        // 之前你可能在循环里或者别处更新了 Buffer，现在确保只在这里更新一次
+
+        }
         vBuffer?.clear()
         vBuffer?.put(verts)
         vBuffer?.position(0)
@@ -304,23 +305,25 @@ void main() {
     }
 
 
-    fun touch(startX:Float,startY:Float,x: Float, y: Float, down: Boolean) {
-        this.startX = startX
-        this.startY = startY
-        val dragDistance = sqrt((x-startX)*(x-startX) + (y-startY)*(y-startY))
-
-        currentTex = if (dragDistance > thresholdDistance){
-            stretchTex
-        }else{
-            smallTex
-        }
-
-        Log.d("dragDistance", "滑动距离t: $dragDistance")
-
+    fun touch(startX: Float, startY: Float, x: Float, y: Float, down: Boolean) {
+        // 1. 转换坐标 (-1 ~ 1)
         val newTx = x * 2f - 1f
         val newTy = (1f - y) * 2f - 1f
+
+        // ✅ 2. 转换起点坐标 (也要转成 OpenGL 坐标)
+        val convertedStartTx = startX * 2f - 1f
+        val convertedStartTy = (1f - startY) * 2f - 1f
+
+        // 3. 判断图片切换逻辑 (保持你原来的逻辑)
+        val dragDistance = sqrt((x - startX) * (x - startX) + (y - startY) * (y - startY))
+        currentTex = if (dragDistance > thresholdDistance) stretchTex else smallTex
+
         if (down) {
             if (!touching) {
+                // ✅ 4. 记录初始位置
+                startTx = convertedStartTx
+                startTy = convertedStartTy
+
                 lastTx = newTx
                 lastTy = newTy
             }
@@ -328,10 +331,8 @@ void main() {
             ty = newTy
             touching = true
         } else {
-            // ✅ 手指松开：直接重置网格！
-            resetMeshToBase() // 调用重置函数
+            resetMeshToBase()
             touching = false
-            // 注意：这里不要更新 lastTx，或者让它失效
         }
     }
 

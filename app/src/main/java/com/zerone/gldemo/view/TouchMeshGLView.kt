@@ -7,6 +7,7 @@ import android.opengl.GLES20
 import android.opengl.GLSurfaceView
 import android.opengl.GLUtils
 import android.util.AttributeSet
+import android.view.GestureDetector
 import android.view.MotionEvent
 import com.zerone.gldemo.renderer.MeshRenderer
 import java.nio.ByteBuffer
@@ -33,7 +34,6 @@ class TouchMeshGLView(context: Context) : GLSurfaceView(context) {
 
 
     override fun onTouchEvent(e: MotionEvent): Boolean {
-
         val x = e.x / width
         val y = e.y / height
 
