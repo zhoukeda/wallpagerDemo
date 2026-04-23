@@ -35,7 +35,8 @@ dependencies {
     api 'dev.romainguy:kotlin-math:1.5.3'
 
     // Filament
-    def filament_version = '1.71.0'
+//    def filament_version = '1.71.0'//升级以后翻转到背面会变黑，不升级的话有些模型会直接崩溃
+    def filament_version = '1.52.0'
     api "com.google.android.filament:filament-android:$filament_version"
     api "com.google.android.filament:gltfio-android:$filament_version"
     api "com.google.android.filament:filament-utils-android:$filament_version"

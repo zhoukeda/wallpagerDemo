@@ -105,4 +105,8 @@ class AdvancedActivity : AppCompatActivity() {
         })
     }
 
+    override fun onDestroy() {
+        super.onDestroy()
+    }
+
 }
