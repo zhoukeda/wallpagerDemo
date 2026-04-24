@@ -7,7 +7,12 @@ import android.opengl.GLES20
 import android.opengl.GLSurfaceView
 import android.opengl.GLUtils
 import android.util.Log
+import com.blankj.utilcode.util.LogUtils
+import com.blankj.utilcode.util.ScreenUtils
+import com.blankj.utilcode.util.VibrateUtils
+import com.zerone.gldemo.GLUtil.createProgram
 import com.zerone.gldemo.R
+import com.zerone.gldemo.view.RequestRequesterListener
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.FloatBuffer
@@ -21,7 +26,7 @@ import kotlin.math.sqrt
  * @date 2026/4/10
  * @desc
  */
-class MeshRenderer(var content: Context) : GLSurfaceView.Renderer {
+class MeshRenderer(var content: Context,val listener:RequestRequesterListener) : GLSurfaceView.Renderer {
 
     private val vertexShaderCode = """
 attribute vec2 aPos;
@@ -87,17 +92,19 @@ void main() {
     private var startTx = 0f
     private var startTy = 0f
 
+    private var width:Int = ScreenUtils.getScreenWidth()
+    private var height:Int = ScreenUtils.getScreenHeight()
+
     // --- 物理回弹相关变量 ---
     private var isRebounding = false       // 是否正在回弹
     private var reboundStartTime = 0L      // 回弹开始的时间戳
-    private val reboundDuration = 1000L    // 回弹总时长 (1秒 = 1000毫秒)
-
+    private val reboundDuration = 500L    // 回弹总时长 (1秒 = 1000毫秒)
     private var reboundVx = 0f             // X轴速度
     private var reboundVy = 0f             // Y轴速度
+    private var speedFactor = 0.4f//距离系数（这里传进来的点位做了归一化处理，所以默认x 1000）
 
-    // 记录按下时的坐标 (需要在触摸事件 down 时赋值)
-    private var downX = 0f
-    private var downY = 0f
+
+
 
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
 
@@ -132,10 +139,13 @@ void main() {
     }
 
     override fun onSurfaceChanged(gl: GL10?, w: Int, h: Int) {
-        GLES20.glViewport(0, 0, w, h)
+        width = w
+        height = h
+        GLES20.glViewport(0, 0, width, height)
     }
 
     override fun onDrawFrame(gl: GL10?) {
+        LogUtils.e("轨迹运动---->onDrawFrame")
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
         drawBackground()
         updateMesh()
@@ -269,17 +279,138 @@ void main() {
                     verts[i + 1] += dy * weight
                 }
             }
-
             // ✅ 3. 根据刚才遍历的结果，决定用哪张图
             // 注意：这里不要在这里赋值给 OpenGL，只记录状态
             lastTx = tx
             lastTy = ty
 
-
+            vBuffer?.clear()
+            vBuffer?.put(verts)
+            vBuffer?.position(0)
         }
-        vBuffer?.clear()
-        vBuffer?.put(verts)
-        vBuffer?.position(0)
+
+        if (isRebounding) {
+            // 1. 计算当前进度 (0.0 到 1.0)
+            val elapsed = System.currentTimeMillis() - reboundStartTime
+            val progress = elapsed.toFloat() / reboundDuration
+            if (progress >= 1.0f) {
+                LogUtils.e("轨迹运动---->时间到，停止碰撞")
+                // --- 时间到了：直接回到原位 ---
+                VibrateUtils.vibrate(50)
+                isRebounding = false
+                resetMeshToBase() // 瞬间复位
+                // 这里可以触发一个回调，告诉外面动画结束了
+            } else {
+                LogUtils.e("轨迹运动---->触发边界检测")
+                for (i in verts.indices step 2) {
+                    verts[i] += reboundVx
+                    verts[i + 1] += reboundVy
+                }
+                // 3. 边界检测与反弹 (台球逻辑)
+                // 假设屏幕/视图宽 width, 高 height
+                checkBoundaryAndBounce()
+
+                vBuffer?.clear()
+                vBuffer?.put(verts)
+                vBuffer?.position(0)
+            }
+            listener.updraw()
+        }
+    }
+
+    // 检查边界
+    // 检查边界
+    private fun checkBoundaryAndBounce() {
+        // 1. 获取包围盒
+        var minX = Float.MAX_VALUE
+        var maxX = Float.MIN_VALUE
+        var minY = Float.MAX_VALUE
+        var maxY = Float.MIN_VALUE
+
+        for (i in verts.indices step 2) {
+            if (verts[i] < minX) minX = verts[i]
+            if (verts[i] > maxX) maxX = verts[i]
+            if (verts[i + 1] < minY) minY = verts[i + 1]
+            if (verts[i + 1] > maxY) maxY = verts[i + 1]
+        }
+        // 2. 定义 NDC 边界
+        val bound = 1.0f
+        // --- X 轴反弹 ---
+        // 碰到左墙 (NDC -1)
+        if (minX <= -bound) {
+            if (reboundVx < 0) {
+                LogUtils.e("轨迹运动---->X轴反弹：左墙")
+                reboundVx = -reboundVx // 速度反向
+                // ✅ 修改点：计算需要移动的距离，把 minX 强行拉到 -1 里面一点点
+                // 比如拉到 -0.99，确保彻底脱离碰撞区
+                val correction = (-bound + 0.01f) - minX
+                moveAllVertices(correction, 0f)
+            }
+        }
+        // 碰到右墙 (NDC 1)
+        else if (maxX >= bound) {
+            if (reboundVx > 0) {
+                LogUtils.e("轨迹运动---->X轴反弹：右墙")
+                reboundVx = -reboundVx // 速度反向
+
+                // ✅ 修改点：把 maxX 强行拉到 1 里面一点点
+                // 比如拉到 0.99
+                val correction = (bound - 0.01f) - maxX
+                moveAllVertices(correction, 0f)
+            }
+        }
+
+        // --- Y 轴反弹 ---
+        // 碰到下墙 (NDC -1)
+        if (minY <= -bound) {
+            if (reboundVy < 0) {
+                LogUtils.e("轨迹运动---->Y轴反弹：下墙")
+                reboundVy = -reboundVy
+
+                val correction = (-bound + 0.01f) - minY
+                moveAllVertices(0f, correction)
+            }
+        }
+        // 碰到上墙 (NDC 1)
+        else if (maxY >= bound) {
+            if (reboundVy > 0) {
+                LogUtils.e("轨迹运动---->Y轴反弹：上墙")
+                reboundVy = -reboundVy
+
+                val correction = (bound - 0.01f) - maxY
+                moveAllVertices(0f, correction)
+            }
+        }
+    }
+
+    // 辅助函数：整体移动图片
+    private fun moveAllVertices(dx: Float, dy: Float) {
+        VibrateUtils.vibrate(50)
+        for (i in verts.indices step 2) {
+            verts[i] += dx
+            verts[i + 1] += dy
+        }
+    }
+
+    // 开始运动
+    private fun startRebound() {
+        // 1. 计算位移向量 (按下 - 抬起) -> 弹弓效果
+        val deltaX = startTx - tx
+        val deltaY = startTy - ty
+        // 2. 计算速度
+        reboundVx = deltaX * speedFactor
+        reboundVy = deltaY * speedFactor
+        LogUtils.e("轨迹运动------>${reboundVx}---->${reboundVy}")
+        val distance = sqrt(reboundVx * reboundVx + reboundVy * reboundVy)
+        LogUtils.e("轨迹运动------>distance---->${distance}")
+        // 阈值也要相应调整，因为现在的速度值很小了
+        if (distance < 0.1f) {
+            resetMeshToBase()
+            return
+        }
+        isRebounding = true
+        reboundStartTime = System.currentTimeMillis()
+        // 强制刷新
     }
 
     private fun createProgram(): Int {
@@ -309,21 +440,17 @@ void main() {
         // 1. 转换坐标 (-1 ~ 1)
         val newTx = x * 2f - 1f
         val newTy = (1f - y) * 2f - 1f
-
         // ✅ 2. 转换起点坐标 (也要转成 OpenGL 坐标)
         val convertedStartTx = startX * 2f - 1f
         val convertedStartTy = (1f - startY) * 2f - 1f
-
         // 3. 判断图片切换逻辑 (保持你原来的逻辑)
         val dragDistance = sqrt((x - startX) * (x - startX) + (y - startY) * (y - startY))
         currentTex = if (dragDistance > thresholdDistance) stretchTex else smallTex
-
         if (down) {
             if (!touching) {
                 // ✅ 4. 记录初始位置
                 startTx = convertedStartTx
                 startTy = convertedStartTy
-
                 lastTx = newTx
                 lastTy = newTy
             }
@@ -333,6 +460,7 @@ void main() {
         } else {
             resetMeshToBase()
             touching = false
+            startRebound()
         }
     }
 
