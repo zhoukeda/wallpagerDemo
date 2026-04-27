@@ -37,12 +37,11 @@ class TouchMeshGLView(context: Context) : GLSurfaceView(context),RequestRequeste
         renderMode = RENDERMODE_WHEN_DIRTY
     }
 
+    override fun dispatchTouchEvent(event: MotionEvent): Boolean {
+        val x = event.x / width
+        val y = event.y / height
 
-    override fun onTouchEvent(e: MotionEvent): Boolean {
-        val x = e.x / width
-        val y = e.y / height
-
-        when (e.action) {
+        when (event.action) {
             MotionEvent.ACTION_DOWN -> {
                 startX = x
                 startY = y
@@ -64,6 +63,33 @@ class TouchMeshGLView(context: Context) : GLSurfaceView(context),RequestRequeste
         }
         return true
     }
+
+//    override fun onTouchEvent(e: MotionEvent): Boolean {
+//        val x = e.x / width
+//        val y = e.y / height
+//
+//        when (e.action) {
+//            MotionEvent.ACTION_DOWN -> {
+//                startX = x
+//                startY = y
+//                isHit = renderer?.hit(startX, startY) == true
+//            }
+//            MotionEvent.ACTION_MOVE -> {
+//                if (isHit) {
+//                    renderer?.touch(startX, startY, x, y, true)
+//                    requestRender()
+//                }
+//            }
+//            MotionEvent.ACTION_CANCEL,
+//            MotionEvent.ACTION_UP -> {
+//                renderer?.touch(0f, 0f, 0f, 0f, false)
+//                if (isHit) {
+//                    requestRender()
+//                }
+//            }
+//        }
+//        return true
+//    }
 
     override fun updraw() {
         requestRender()

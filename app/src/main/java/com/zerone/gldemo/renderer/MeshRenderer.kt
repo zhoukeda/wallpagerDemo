@@ -98,10 +98,11 @@ void main() {
     // --- 物理回弹相关变量 ---
     private var isRebounding = false       // 是否正在回弹
     private var reboundStartTime = 0L      // 回弹开始的时间戳
-    private val reboundDuration = 500L    // 回弹总时长 (1秒 = 1000毫秒)
+    private val reboundDuration = 2000L    // 回弹总时长 (1秒 = 1000毫秒)
     private var reboundVx = 0f             // X轴速度
     private var reboundVy = 0f             // Y轴速度
     private var speedFactor = 0.4f//距离系数（这里传进来的点位做了归一化处理，所以默认x 1000）
+    private var disFactor = 0.08f//可以运动距离
 
 
 
@@ -404,7 +405,7 @@ void main() {
         val distance = sqrt(reboundVx * reboundVx + reboundVy * reboundVy)
         LogUtils.e("轨迹运动------>distance---->${distance}")
         // 阈值也要相应调整，因为现在的速度值很小了
-        if (distance < 0.1f) {
+        if (distance < disFactor) {
             resetMeshToBase()
             return
         }

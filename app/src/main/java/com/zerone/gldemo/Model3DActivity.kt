@@ -28,18 +28,15 @@ import dev.romainguy.kotlin.math.normalize
 import io.github.sceneview.SceneView
 import io.github.sceneview.loaders.ModelLoader
 import io.github.sceneview.math.Position
-import io.github.sceneview.math.Rotation
 import io.github.sceneview.math.Scale
 import io.github.sceneview.math.Transform
 import io.github.sceneview.model.ModelInstance
 import io.github.sceneview.model.model
-import io.github.sceneview.node.LightNode
 import io.github.sceneview.node.ModelNode
 import kotlinx.coroutines.launch
 import java.io.File
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
-import kotlin.math.abs
 
 /**
  * @author dada
@@ -51,9 +48,9 @@ class Model3DActivity : AppCompatActivity() {
     private var autoRotate = true
     private var yaw = 0f
     private var pitch = 0f
-    private var scale = 1.3f
+    private var scale = 1.3f//初始放大倍数
     private val minScale = 0.2f
-    private var maxScale = 1.8f
+    private var maxScale = 3f
 
     //模型相关
     private var modelNode: ModelNode? = null
@@ -61,6 +58,8 @@ class Model3DActivity : AppCompatActivity() {
     private var filamentInstance: ModelInstance? = null
     private var loader: ModelLoader? = null
     private var isDestroyed = false
+
+    private var rotateSpeed = 0.5f//自动旋转速度
 
     //触摸相关
     private lateinit var gestureDetector: GestureDetector
@@ -82,7 +81,7 @@ class Model3DActivity : AppCompatActivity() {
     private val FLING_THRESHOLD = 10f // 停止惯性的速度阈值
     // 如果需要限制垂直角度，可以保留这个，如果不需要限制可删除
     private var pitchAccumulator = 0f
-    private var flingVelocity = 0.003f//惯性速度系数
+    private var flingVelocity = 0.008f//惯性速度系数
 
     //旋转矩阵
     private var currentRotation = Quaternion()
@@ -233,7 +232,7 @@ class Model3DActivity : AppCompatActivity() {
         sceneView.onFrame = onFrame@{ frameTimeNanos ->
             if (isDestroyed) return@onFrame
             if (autoRotate) {
-                val qAuto = Quaternion.fromAxisAngle(Float3(0f, 1f, 0f), 0.2f) // 0.5 是自动旋转速度
+                val qAuto = Quaternion.fromAxisAngle(Float3(0f, 1f, 0f), rotateSpeed) // 0.5 是自动旋转速度
                 currentRotation = qAuto * currentRotation
             }else{
                 if (Math.abs(flingVelocityX) > FLING_THRESHOLD || Math.abs(flingVelocityY) > FLING_THRESHOLD) {
