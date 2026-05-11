@@ -319,7 +319,7 @@ open class SceneView @JvmOverloads constructor(
      *
      * @see [EnvironmentLoader]
      */
-    var environment = sharedEnvironment ?: createEnvironmentOld(environmentLoader, isOpaque)
+    var environment = sharedEnvironment ?: createEnvironment(environmentLoader, isOpaque)
         set(value) {
             if (field != value) {
                 field = value
@@ -1054,35 +1054,35 @@ open class SceneView @JvmOverloads constructor(
         fun createMainLightNode(engine: Engine): LightNode = DefaultLightNode(engine)
 
         //1.71.0写法
-//        fun createEnvironment(
-//            environmentLoader: EnvironmentLoader,
-//            isOpaque: Boolean = true
-//        ) = run {
-//            val engine = environmentLoader.engine
-//            val iblBundle = KTX1Loader.createIndirectLight(
-//                engine,
-//                environmentLoader.context.assets.readBuffer(
-//                    fileLocation = "environments/neutral/neutral_ibl.ktx"
-//                )
-//            )
-//            createEnvironment(
-//                engine = engine,
-//                isOpaque = isOpaque,
-//                indirectLight = iblBundle.indirectLight
-//            )
-//        }
-        //1.52.0写法
-        fun createEnvironmentOld(environmentLoader: EnvironmentLoader, isOpaque: Boolean = true) =
-            createEnvironment(
-                engine = environmentLoader.engine,
-                isOpaque = isOpaque,
-                indirectLight = KTX1Loader.createIndirectLight(
-                    environmentLoader.engine,
-                    environmentLoader.context.assets.readBuffer(
-                        fileLocation = "environments/neutral/neutral_ibl.ktx"
-                    ),
+        fun createEnvironment(
+            environmentLoader: EnvironmentLoader,
+            isOpaque: Boolean = true
+        ) = run {
+            val engine = environmentLoader.engine
+            val iblBundle = KTX1Loader.createIndirectLight(
+                engine,
+                environmentLoader.context.assets.readBuffer(
+                    fileLocation = "environments/neutral/neutral_ibl.ktx"
                 )
             )
+            createEnvironment(
+                engine = engine,
+                isOpaque = isOpaque,
+                indirectLight = iblBundle.indirectLight
+            )
+        }
+        //1.52.0写法
+//        fun createEnvironmentOld(environmentLoader: EnvironmentLoader, isOpaque: Boolean = true) =
+//            createEnvironment(
+//                engine = environmentLoader.engine,
+//                isOpaque = isOpaque,
+//                indirectLight = KTX1Loader.createIndirectLight(
+//                    environmentLoader.engine,
+//                    environmentLoader.context.assets.readBuffer(
+//                        fileLocation = "environments/neutral/neutral_ibl.ktx"
+//                    ),
+//                )
+//            )
 
         fun createEnvironment(
             engine: Engine,

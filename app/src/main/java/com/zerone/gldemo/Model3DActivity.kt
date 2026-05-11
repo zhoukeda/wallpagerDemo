@@ -17,7 +17,9 @@ import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.blankj.utilcode.util.LogUtils
+import com.google.android.filament.EntityManager
 import com.google.android.filament.LightManager
+import com.google.android.filament.RenderableManager
 import com.google.android.filament.Texture
 import com.google.android.filament.Texture.PixelBufferDescriptor
 import com.google.android.filament.TextureSampler
@@ -32,6 +34,7 @@ import io.github.sceneview.math.Scale
 import io.github.sceneview.math.Transform
 import io.github.sceneview.model.ModelInstance
 import io.github.sceneview.model.model
+import io.github.sceneview.node.LightNode
 import io.github.sceneview.node.ModelNode
 import kotlinx.coroutines.launch
 import java.io.File
@@ -144,6 +147,8 @@ class Model3DActivity : AppCompatActivity() {
         // 创建初始 Manipulator
         sceneView.cameraManipulator = null
 
+
+
         // 2. 手势监听器 (GestureDetector)
         gestureDetector = GestureDetector(this,
             object : GestureDetector.SimpleOnGestureListener() {
@@ -208,6 +213,8 @@ class Model3DActivity : AppCompatActivity() {
                 }
             }
         )
+
+
 
 
         sceneView.setOnTouchListener { _, event ->
@@ -278,7 +285,7 @@ class Model3DActivity : AppCompatActivity() {
         // 加载模型
         lifecycleScope.launch {
             if (isDestroyed) return@launch
-            val file = copyAssetToCache(this@Model3DActivity, "五角星安卓贴图材质.glb")
+            val file = copyAssetToCache(this@Model3DActivity, "爱心 .glb")
             loader = ModelLoader(sceneView.engine, this@Model3DActivity)
             filamentInstance = loader?.createModelInstance(file)
             modelNode = filamentInstance?.let { ModelNode(it) }.apply {
@@ -290,7 +297,20 @@ class Model3DActivity : AppCompatActivity() {
                 sceneView.addChildNode(it)
             }
 
+
+            val fillLight = LightNode(
+                engine = sceneView.engine,
+                type = LightManager.Type.SUN
+            ) {
+                color(0.8f, 0.9f, 1f)
+                intensity(50_000f)
+                direction(0f, 0f, -1f)
+            }
+            sceneView.mainLightNode = fillLight
+
             Log.d("Model3D", "模型加载成功")
+
+
         }
     }
 
@@ -343,6 +363,7 @@ class Model3DActivity : AppCompatActivity() {
                 null
             )
             texture?.setImage(sceneView.engine, 0, pbd)
+
             filamentInstance?.materialInstances?.forEach { material ->
                 Log.d("Model3D", "material = ${material.name}")
                 texture?.let {
@@ -352,13 +373,15 @@ class Model3DActivity : AppCompatActivity() {
                         TextureSampler()
                     )
                 }
+
+
             }
         }
     }
 
 
     private fun updateModelTransform() {
-        LogUtils.e("Model3D", "传感器数据---->${pitch}---->${yaw}")
+//        LogUtils.e("Model3D", "传感器数据---->${pitch}---->${yaw}")
         val node = modelNode ?: return
         node.transform = Transform(
             position = Position(0f, 0f, 0f),
